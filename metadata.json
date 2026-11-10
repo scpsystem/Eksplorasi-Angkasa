@@ -1,0 +1,6 @@
+{
+  "name": "Galaksi Sains: Pengembaraan Angkasa",
+  "description": "Permainan pendidikan sains interaktif Tahun 5 KSSR: Fasa Bulan dan Buruj merangkumi Lunar Rush, Star Quest, dan Galaxy Explorer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
