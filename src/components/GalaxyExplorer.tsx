@@ -4,6 +4,9 @@ import { GALAXY_EXPLORER_CHECKPOINTS } from '../data/learningContent';
 import { CharacterAvatar } from './CharacterAvatars';
 import { QuestionModal } from './QuestionModal';
 import { soundEffects } from '../utils/audio';
+import { HiddenObjectGame } from './galaxy/HiddenObjectGame';
+import { ConstellationConnectGame } from './galaxy/ConstellationConnectGame';
+import { ImageMatchMemoryGame } from './galaxy/ImageMatchMemoryGame';
 import {
   ArrowLeft,
   Rocket,
@@ -16,7 +19,9 @@ import {
   CheckCircle2,
   RotateCcw,
   Play,
-  Check
+  Check,
+  Search,
+  Layers
 } from 'lucide-react';
 
 interface GalaxyExplorerProps {
@@ -28,13 +33,13 @@ interface GalaxyExplorerProps {
 
 // 7 Planet destinations on the galaxy map
 const PLANET_DESTINATIONS = [
-  { step: 1, name: 'Stesen Angkasa Alpha', color: 'from-sky-400 to-blue-600', x: 12, y: 75, miniTask: 'Kumpul 3 Bintang Tenaga Stesen' },
-  { step: 2, name: 'Planet Luna', color: 'from-amber-300 to-yellow-500', x: 25, y: 40, miniTask: 'Seimbangkan Orbit Putaran Bulan' },
-  { step: 3, name: 'Nebula Qamari', color: 'from-teal-300 to-emerald-500', x: 42, y: 68, miniTask: 'Susun Kitaran Fasa Qamari' },
-  { step: 4, name: 'Sektor 4 Buruj', color: 'from-purple-400 to-indigo-600', x: 58, y: 32, miniTask: 'Sambungkan 3 Gugusan Bintang' },
-  { step: 5, name: 'Pulsar Navigasi', color: 'from-rose-400 to-pink-600', x: 72, y: 65, miniTask: 'Kalibrasi Kompas Utara & Selatan' },
-  { step: 6, name: 'Planet Musim Pertanian', color: 'from-orange-400 to-amber-600', x: 82, y: 35, miniTask: 'Hantar Benih Mengikut Musim' },
-  { step: 7, name: 'Teras Galaksi', color: 'from-yellow-300 via-rose-500 to-purple-600', x: 92, y: 62, miniTask: 'Aktifkan 3 Kristal Teras Galaksi' }
+  { step: 1, name: 'Stesen Angkasa Alpha', color: 'from-sky-400 to-blue-600', x: 12, y: 75, miniTask: 'Cari 3 Alatan Sains Angkasa Tersembunyi' },
+  { step: 2, name: 'Planet Luna', color: 'from-amber-300 to-yellow-500', x: 25, y: 40, miniTask: 'Cari 3 Alatan Pantulan & Orbit Tersembunyi' },
+  { step: 3, name: 'Nebula Qamari', color: 'from-teal-300 to-emerald-500', x: 42, y: 68, miniTask: 'Sambung Titik Bintang: Buruj Biduk' },
+  { step: 4, name: 'Sektor 4 Buruj', color: 'from-purple-400 to-indigo-600', x: 58, y: 32, miniTask: 'Sambung Titik Bintang: Buruj Pari' },
+  { step: 5, name: 'Pulsar Navigasi', color: 'from-rose-400 to-pink-600', x: 72, y: 65, miniTask: 'Suai Padan Memori: Navigasi Buruj Arah' },
+  { step: 6, name: 'Planet Musim Pertanian', color: 'from-orange-400 to-amber-600', x: 82, y: 35, miniTask: 'Suai Padan Memori: Buruj Petunjuk Musim' },
+  { step: 7, name: 'Teras Galaksi', color: 'from-yellow-300 via-rose-500 to-purple-600', x: 92, y: 62, miniTask: 'Suai Padan Memori: Fasa Bulan & Takwim Qamari' }
 ];
 
 export const GalaxyExplorer: React.FC<GalaxyExplorerProps> = ({
@@ -73,20 +78,12 @@ export const GalaxyExplorer: React.FC<GalaxyExplorerProps> = ({
   };
 
   // Mini Task Completion -> triggers educational question
-  const handleCollectMiniTaskStar = () => {
-    soundEffects.playCollect();
-    const nextCount = miniTaskStarsCollected + 1;
-    setMiniTaskStarsCollected(nextCount);
-
-    if (nextCount >= 3) {
-      soundEffects.playLevelUp();
-      setTimeout(() => {
-        if (selectedPlanetIdx !== null) {
-          setActiveChallenge(GALAXY_EXPLORER_CHECKPOINTS[selectedPlanetIdx]);
-          setActiveMiniTaskIdx(null);
-        }
-      }, 500);
-    }
+  const handleMiniGameComplete = (idx: number) => {
+    soundEffects.playLevelUp();
+    setTimeout(() => {
+      setActiveChallenge(GALAXY_EXPLORER_CHECKPOINTS[idx]);
+      setActiveMiniTaskIdx(null);
+    }, 400);
   };
 
   // Educational question completion
@@ -317,53 +314,45 @@ export const GalaxyExplorer: React.FC<GalaxyExplorerProps> = ({
         </div>
       </div>
 
-      {/* Mini-Mission Pre-Question Modal */}
+      {/* Mini-Mission Pre-Question Games */}
       {activeMiniTaskIdx !== null && selectedPlanetIdx !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
-          <div className="relative w-full max-w-md bg-slate-900 border-2 border-amber-500/60 rounded-3xl p-6 text-center space-y-5 shadow-2xl">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto border border-amber-400/40">
-              <Sparkles className="w-8 h-8 animate-spin" />
-            </div>
+        <>
+          {/* Checkpoint 1 & 2: Misi Objek Tersembunyi */}
+          {(selectedPlanetIdx === 0 || selectedPlanetIdx === 1) && (
+            <HiddenObjectGame
+              stepIndex={selectedPlanetIdx}
+              onComplete={() => handleMiniGameComplete(selectedPlanetIdx)}
+              onCancel={() => {
+                setSelectedPlanetIdx(null);
+                setActiveMiniTaskIdx(null);
+              }}
+            />
+          )}
 
-            <div className="space-y-1">
-              <span className="text-[10px] uppercase tracking-widest text-amber-400 font-extrabold">
-                Mini Misi Planet #{selectedPlanetIdx + 1}
-              </span>
-              <h3 className="text-xl font-black text-white">
-                {PLANET_DESTINATIONS[selectedPlanetIdx].name}
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Tugasan: {PLANET_DESTINATIONS[selectedPlanetIdx].miniTask}.
-                Klik bintang kosmik di bawah untuk mengumpulkan tenaga sebelum memulakan soalan pembelajaran!
-              </p>
-            </div>
+          {/* Checkpoint 3 & 4: Sambung Titik Bintang Buruj */}
+          {(selectedPlanetIdx === 2 || selectedPlanetIdx === 3) && (
+            <ConstellationConnectGame
+              stepIndex={selectedPlanetIdx}
+              onComplete={() => handleMiniGameComplete(selectedPlanetIdx)}
+              onCancel={() => {
+                setSelectedPlanetIdx(null);
+                setActiveMiniTaskIdx(null);
+              }}
+            />
+          )}
 
-            {/* Interactive Stars to Click */}
-            <div className="flex items-center justify-center gap-4 py-3">
-              {[0, 1, 2].map(starIndex => {
-                const isCollected = starIndex < miniTaskStarsCollected;
-                return (
-                  <button
-                    key={starIndex}
-                    type="button"
-                    onClick={handleCollectMiniTaskStar}
-                    className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all cursor-pointer ${
-                      isCollected
-                        ? 'bg-amber-500 text-slate-950 shadow-[0_0_15px_#f59e0b] scale-110'
-                        : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 animate-pulse'
-                    }`}
-                  >
-                    <Star className={`w-8 h-8 ${isCollected ? 'fill-slate-950' : 'fill-amber-400'}`} />
-                  </button>
-                );
-              })}
-            </div>
-
-            <span className="text-xs font-bold text-amber-300 block">
-              Terkumpul: {miniTaskStarsCollected} / 3 Bintang Tenaga
-            </span>
-          </div>
-        </div>
+          {/* Checkpoint 5, 6 & 7: Suai Padan Imej Bergambar (Memori Kad) */}
+          {selectedPlanetIdx >= 4 && (
+            <ImageMatchMemoryGame
+              stepIndex={selectedPlanetIdx}
+              onComplete={() => handleMiniGameComplete(selectedPlanetIdx)}
+              onCancel={() => {
+                setSelectedPlanetIdx(null);
+                setActiveMiniTaskIdx(null);
+              }}
+            />
+          )}
+        </>
       )}
 
       {/* Checkpoint Challenge Question Modal */}

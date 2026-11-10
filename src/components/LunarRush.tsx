@@ -20,7 +20,7 @@ interface TrackItem {
   id: number;
   lane: LaneIndex;
   z: number; // 0 (horizon/far) to 100 (player near)
-  type: 'star' | 'rock' | 'meteor' | 'barrier';
+  type: 'star' | 'superStar';
   collected?: boolean;
 }
 
@@ -45,11 +45,11 @@ export const LunarRush: React.FC<LunarRushProps> = ({
   const [starsCollected, setStarsCollected] = useState<number>(0);
   const [distance, setDistance] = useState<number>(0);
 
-  // Checkpoint thresholds in meters/distance
-  const CHECKPOINT_DISTANCE = 450;
+  // Checkpoint thresholds in meters (~35 saat bagi setiap checkpoint pada kelajuan 30 m/s)
+  const CHECKPOINT_DISTANCE = 1050;
   const targetCheckpoints = LUNAR_RUSH_QUESTIONS.length; // 7
 
-  // Track items (stars, rocks, meteors, high barriers)
+  // Track items (hanya bintang bercahaya merentasi 3 lorong tanpa sebarang halangan)
   const [trackItems, setTrackItems] = useState<TrackItem[]>([]);
 
   // Refs for smooth animation loop & physics without setState-in-render issues
@@ -208,8 +208,8 @@ export const LunarRush: React.FC<LunarRushProps> = ({
       const delta = Math.min((time - lastTimeRef.current) / 1000, 0.1);
       lastTimeRef.current = time;
 
-      // 1. Advance distance
-      const nextDist = distanceRef.current + 90 * delta;
+      // 1. Advance distance (~35 saat bagi setiap checkpoint pada kelajuan 30 unit/s)
+      const nextDist = distanceRef.current + 30 * delta;
       const targetDist = (currentCheckpointIdxRef.current + 1) * CHECKPOINT_DISTANCE;
 
       // Checkpoint docking sequence
@@ -230,29 +230,18 @@ export const LunarRush: React.FC<LunarRushProps> = ({
         setDistance(nextDist);
       }
 
-      // 2. Spawn items along the 3 lanes
+      // 2. Spawn stars along the 3 lanes (No obstacles / barriers)
       spawnTimer += delta;
-      if (spawnTimer > 1.25) {
+      if (spawnTimer > 0.6) {
         spawnTimer = 0;
         const randomLane = Math.floor(Math.random() * 3) as LaneIndex;
-        const randomType = Math.random();
-
-        let type: TrackItem['type'] = 'star';
-        if (randomType < 0.45) {
-          type = 'star'; // Collectible
-        } else if (randomType < 0.65) {
-          type = 'rock'; // Low obstacle: jump or avoid
-        } else if (randomType < 0.85) {
-          type = 'meteor'; // Middle ground obstacle: avoid
-        } else {
-          type = 'barrier'; // High overhead obstacle: slide under or avoid
-        }
+        const isSuper = Math.random() < 0.25; // 25% chance of super cosmic star
 
         const newItem: TrackItem = {
           id: Date.now() + Math.random(),
           lane: randomLane,
           z: 0, // starts at horizon
-          type,
+          type: isSuper ? 'superStar' : 'star',
           collected: false
         };
         trackItemsRef.current = [...trackItemsRef.current, newItem];
@@ -260,38 +249,21 @@ export const LunarRush: React.FC<LunarRushProps> = ({
 
       // 3. Move items towards player (z: 0 -> 100)
       const currentLaneNow = currentLaneRef.current;
-      const isJumpingNow = isJumpingRef.current;
-      const isSlidingNow = isSlidingRef.current;
       let starsAwarded = 0;
+      let scoreGained = 0;
 
       const updatedItems: TrackItem[] = [];
 
       for (const item of trackItemsRef.current) {
         const nextZ = item.z + gameSpeedRef.current * delta;
 
-        // Player collision detection zone (z around 85 - 95)
-        if (nextZ >= 85 && nextZ <= 96 && item.lane === currentLaneNow && !item.collected) {
-          if (item.type === 'star') {
-            starsAwarded++;
-            item.collected = true;
-            // collected star removed
-            continue;
-          } else if (item.type === 'rock') {
-            // Jump clears rock obstacle
-            if (!isJumpingNow) {
-              soundEffects.playWrong();
-            }
-          } else if (item.type === 'barrier') {
-            // Slide clears high overhead barrier
-            if (!isSlidingNow) {
-              soundEffects.playWrong();
-            }
-          } else if (item.type === 'meteor') {
-            // High jump or dodge
-            if (!isJumpingNow) {
-              soundEffects.playWrong();
-            }
-          }
+        // Player collection zone (z around 84 - 96) across the 3 lanes
+        if (nextZ >= 84 && nextZ <= 96 && item.lane === currentLaneNow && !item.collected) {
+          const points = item.type === 'superStar' ? 25 : 10;
+          scoreGained += points;
+          starsAwarded++;
+          item.collected = true;
+          continue;
         }
 
         if (nextZ < 105 && !item.collected) {
@@ -305,7 +277,7 @@ export const LunarRush: React.FC<LunarRushProps> = ({
       if (starsAwarded > 0) {
         soundEffects.playCollect();
         setStarsCollected(prev => prev + starsAwarded);
-        onUpdateScore(progress.totalScore + starsAwarded * 10);
+        onUpdateScore(progress.totalScore + scoreGained);
       }
 
       requestRef.current = requestAnimationFrame(gameLoop);
@@ -501,47 +473,22 @@ export const LunarRush: React.FC<LunarRushProps> = ({
                 className="absolute left-1/2 top-0 transition-transform duration-75"
                 style={style}
               >
-                {/* 1. Golden Glowing Star (Collectible) */}
+                {/* 1. Golden Glowing Star (Collectible +10 Pts) */}
                 {item.type === 'star' && (
                   <div className="w-10 h-10 -ml-5 -mt-5 rounded-full flex items-center justify-center animate-spin">
-                    <Star className="w-8 h-8 fill-amber-400 text-yellow-200 drop-shadow-[0_0_12px_#facc15]" />
+                    <Star className="w-8 h-8 fill-amber-400 text-yellow-200 drop-shadow-[0_0_14px_#facc15]" />
                   </div>
                 )}
 
-                {/* 2. Moon Rock (Low Obstacle: Jump or change lane) */}
-                {item.type === 'rock' && (
-                  <div className="w-12 h-10 -ml-6 -mt-8 flex flex-col items-center">
-                    <svg viewBox="0 0 50 40" className="w-full h-full drop-shadow">
-                      <polygon points="12,40 2,24 16,8 34,2 48,18 42,40" fill="#64748B" stroke="#CBD5E1" strokeWidth="2" />
-                      <polygon points="15,35 6,24 20,14 32,10 42,22 38,36" fill="#475569" />
-                    </svg>
-                    <span className="text-[8px] font-bold text-amber-300 uppercase tracking-tighter">Batu Bulan</span>
-                  </div>
-                )}
-
-                {/* 3. Small Meteorite (Obstacle: Dodge or jump) */}
-                {item.type === 'meteor' && (
-                  <div className="w-12 h-12 -ml-6 -mt-10 flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-600 via-rose-500 to-yellow-300 shadow-[0_0_15px_#f97316] border-2 border-yellow-200 animate-pulse flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-white" />
+                {/* 2. Super Cosmic Star (Collectible +25 Pts) */}
+                {item.type === 'superStar' && (
+                  <div className="w-12 h-12 -ml-6 -mt-6 rounded-full flex flex-col items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-sky-400 via-teal-300 to-amber-300 shadow-[0_0_20px_#38bdf8] flex items-center justify-center animate-pulse border-2 border-white">
+                      <Sparkles className="w-6 h-6 text-slate-950" />
                     </div>
-                    <span className="text-[8px] font-bold text-rose-300 uppercase">Meteor</span>
-                  </div>
-                )}
-
-                {/* 4. Overhead Energy Barrier (High Obstacle: Slide under or change lane) */}
-                {item.type === 'barrier' && (
-                  <div className="w-24 h-14 -ml-12 -mt-20 flex flex-col items-center">
-                    {/* Floating Barrier Bar */}
-                    <div className="w-full h-4 rounded-full bg-gradient-to-r from-red-500 via-rose-400 to-red-500 shadow-[0_0_20px_#f43f5e] border border-white flex items-center justify-center">
-                      <span className="text-[8px] font-black text-slate-950 uppercase tracking-widest">
-                        GELONGSOR!
-                      </span>
-                    </div>
-                    <div className="flex justify-between w-full px-1">
-                      <div className="w-1 h-10 bg-rose-400/80" />
-                      <div className="w-1 h-10 bg-rose-400/80" />
-                    </div>
+                    <span className="text-[8px] font-black text-sky-200 uppercase tracking-widest mt-0.5 drop-shadow">
+                      +25
+                    </span>
                   </div>
                 )}
               </div>
