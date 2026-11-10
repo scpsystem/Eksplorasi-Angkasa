@@ -93,7 +93,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                   setName(e.target.value);
                   if (errorMsg) setErrorMsg('');
                 }}
-                placeholder="Contoh: Amirul / Batrisyia"
+                placeholder="Contoh: Haqiem / Safiya"
                 className="w-full px-4 py-3.5 rounded-2xl bg-slate-950/90 border-2 border-slate-700 focus:border-sky-400 text-white font-bold text-base outline-none transition-colors shadow-inner placeholder:text-slate-500"
                 autoFocus
               />
